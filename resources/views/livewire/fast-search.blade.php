@@ -204,8 +204,6 @@
     @endif
 </div>
 <script>
-    setTimeout(() => {
-        document.getElementById("dropdownNotificationButton").removeAttribute('readonly');
-    }, 1000);
+   
     
 </script>
