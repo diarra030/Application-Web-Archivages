@@ -367,69 +367,84 @@ class FolderManager extends Component
             }
         }
     }
-    public function save()
-    {
-        $this->validate([
-            'files.*' => 'required|file|mimes:txt,pdf,doc,docx,xls,xlsx,csv,ppt,pptx,png,jpeg|max:1000200',
-        ]);
-        if ($this->lock) {
-            $this->validate(['code_verrouille' => 'required|min:4']);
-        }
-        foreach ($this->files as $file) {
-            // Gestion du nom de fichier
-            $originalName = pathinfo($file->getClientOriginalName())['filename'];
-            $newName = $this->generateUniqueFilename($originalName);
+   public function save()
+{
+    $this->validate([
+        'files.*' => 'required|file|mimes:txt,pdf,doc,docx,xls,xlsx,csv,ppt,pptx,png,jpeg,jpg,gif,mp4,avi,mkv,mov,wmv,flv,webm,3gp,m4v|max:1048576', 
+        // 1 GB max par fichier (1048576 KB)
+    ]);
 
-            $nomFichier = pathinfo($newName)['filename']; // le nom du fichier sans l'extension
-            // Stockage du fichier
-            $path = $file->store('archives', 'public');
-            // Création du document
-            $document = Document::create([
-                'nom' => $nomFichier,
-                'filename' => $path,
-                'type' => $file->getClientOriginalExtension(),
-                'taille' => round($file->getSize() / 1024),
-                'content' => '', // Contenu vide initialement
-                'user_id' => Auth::id(),
-                'verrouille' => $this->lock,
-                'code_verrou' => Hash::make($this->code_verrouille), // 🔐 Code à 4 chiffres
-                'folder_id' => $this->folderCreateId,
-                'confidentiel' => $this->confidence,
-            ]);
-
-            // Attachement des relations
-            $document->services()->attach($this->SessionService); //le document charger est lier au service
-
-            if ($this->confidence) {
-                $this->handleConfidentiality($document);
-            }
-            $fullPath = storage_path('app/public/' . $path);
-            //$output = shell_exec("pdftotext -f 1 -l 5 $fullPath - 2>&1");
-            //dd($output);
-            // Dispatch du job
-            traitementQueueUploadFile::dispatch($document, $this->mot_cle ?? '', $this->confidence); // Garantit une string vide si null
-
-            // Journalisation
-            ActivityLog::create([
-                'action' => ' Début du traitement du document',
-                'description' => $document->nom,
-                'icon' => '...', 
-                'user_id' => Auth::id(),
-                'confidentiel' => $this->confidence,
-            ]);
-        }
-        if (count($this->files) > 0) {
-            $this->dispatch('file_create');
-        }
-
-        $this->files = [];
-        $this->compteFileSelected = 0;
-        $this->mot_cle = '';
-        $this->lock = false;
-        $this->code_verrouille = '';
-
-        $this->dispatch('resetJS');
+    if ($this->lock) {
+        $this->validate(['code_verrouille' => 'required|min:4']);
     }
+
+    foreach ($this->files as $file) {
+        // Gestion du nom de fichier unique
+        $originalName = pathinfo($file->getClientOriginalName())['filename'];
+        $newName = $this->generateUniqueFilename($originalName);
+        $nomFichier = pathinfo($newName)['filename'];
+
+        // Vérification du type
+        $extension = strtolower($file->getClientOriginalExtension());
+        $isVideo = in_array($extension, ['mp4', 'avi', 'mkv', 'mov', 'wmv', 'flv', 'webm', '3gp', 'm4v']);
+
+        // Définir le répertoire selon le type
+        $directory = $isVideo ? 'videos' : 'archives';
+
+        // Stockage
+        $path = $file->store($directory, 'public');
+
+        // Création du document
+        $document = Document::create([
+            'nom'         => $nomFichier,
+            'filename'    => $path,
+            'type'        => $extension,
+            'taille'      => round($file->getSize() / 1024), // taille en Ko
+            'content'     => '', 
+            'user_id'     => Auth::id(),
+            'verrouille'  => $this->lock,
+            'code_verrou' => $this->lock ? Hash::make($this->code_verrouille) : null,
+            'folder_id'   => $this->folderCreateId,
+            'confidentiel'=> $this->confidence,
+        ]);
+
+        // Attachement au service
+        $document->services()->attach($this->SessionService);
+
+        // Confidentialité
+        if ($this->confidence) {
+            $this->handleConfidentiality($document);
+        }
+
+        // Dispatch du job uniquement pour les documents (pas les vidéos)
+        if (!$isVideo) {
+            traitementQueueUploadFile::dispatch($document, $this->mot_cle ?? '', $this->confidence);
+        }
+
+        // Journalisation
+        ActivityLog::create([
+            'action'      => $isVideo ? '🎥 Vidéo archivée' : '📄 Document archivé',
+            'description' => $document->nom,
+            'icon'        => $isVideo ? '🎬' : '📑',
+            'user_id'     => Auth::id(),
+            'confidentiel'=> $this->confidence,
+        ]);
+    }
+
+    if (count($this->files) > 0) {
+        $this->dispatch('file_create');
+    }
+
+    // Reset
+    $this->files = [];
+    $this->compteFileSelected = 0;
+    $this->mot_cle = '';
+    $this->lock = false;
+    $this->code_verrouille = '';
+
+    $this->dispatch('resetJS');
+}
+
     //================================================================================
 
     //================================================================================

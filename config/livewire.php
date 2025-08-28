@@ -65,8 +65,8 @@ return [
 
     'temporary_file_upload' => [
         'disk' => 'local',        // Example: 'local', 's3'              | Default: 'default'
-        'rules' => ['max:1228800']  ,
-        'directory' => 'storage/app/livewire-tmp',   // Example: 'tmp'                      | Default: 'livewire-tmp'
+        'rules' => 'file|mimes:jpg,jpeg,png,pdf,doc,docx,xls,xlsx,csv,ppt,pptx,mp4,avi,mkv,mov|max:1048576' ,
+        'directory' => null,   // Example: 'tmp'                      | Default: 'livewire-tmp'
         'middleware' => null,  // Example: 'throttle:5,1'             | Default: 'throttle:60,1'
         'preview_mimes' => [   // Supported file types for temporary pre-signed file URLs...
             'png', 'gif', 'bmp', 'svg', 'wav', 'mp4',
