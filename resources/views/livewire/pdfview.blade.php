@@ -41,13 +41,13 @@
                     @if ($isVideo)
                         {{-- 🎬 LECTEUR VIDÉO --}}
                         <div class="flex-1 bg-black flex items-center justify-center p-4">
-                            <div class="w-full h-full max-w-5xl">
+                            <div >
                                 <!-- Lecteur vidéo principal -->
-                                <video id="main-video-player" 
-                                       class="w-full h-full object-contain rounded-lg shadow-lg" 
-                                       controls 
+                                <video id="main-video-player" style="height: 308px; width:600px"
+                                       class=" object-contain rounded-lg shadow-lg" 
                                        preload="metadata"
-                                       poster="">
+                                       {{-- poster="{{ asset('img/video.jpg') }}" --}}
+                                       >
                                     <source src="{{ asset('storage/' . $document->filename) }}" type="video/{{ $document->type }}">
                                     Votre navigateur ne supporte pas la lecture de vidéos.
                                 </video>
@@ -97,7 +97,7 @@
                                             <span id="video-duration">00:00</span>
                                         </div>
                                         <div class="text-gray-400">
-                                            Qualité: {{ strtoupper($document->type) }}
+                                            Type: {{ strtoupper($document->type) }}
                                         </div>
                                     </div>
                                 </div>
